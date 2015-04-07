@@ -26,6 +26,7 @@ function SymbolBucket(buffers, layoutProperties, collision, overscaling, collisi
     this.collision = collision;
     this.overscaling = overscaling;
     this.collisionDebug = collisionDebug;
+    this.sortedAngle = undefined;
 
     this.symbolInstances = [];
 
@@ -190,6 +191,22 @@ SymbolBucket.prototype.placeFeatures = function(buffers, collisionDebug) {
 
     var textAlongLine = layout['text-rotation-alignment'] === 'map' && layout['symbol-placement'] === 'line';
     var iconAlongLine = layout['icon-rotation-alignment'] === 'map' && layout['symbol-placement'] === 'line';
+
+    if (layout['symbol-sort'] !== undefined && this.sortedAngle !== this.collision.angle) {
+
+        var sortAngle = layout['symbol-sort'] / 180 * Math.PI;
+        var angle = this.collision.angle - sortAngle;
+        var sin = Math.sin(angle),
+            cos = Math.cos(angle);
+
+        this.symbolInstances.sort(function(a, b) {
+            var aRotated = sin * a.x + cos * a.y;
+            var bRotated = sin * b.x + cos * b.y;
+            return bRotated - aRotated;
+        });
+
+        this.sortedAngle = this.collision.angle;
+    }
 
     for (var p = 0; p < this.symbolInstances.length; p++) {
         var symbolInstance = this.symbolInstances[p];
@@ -397,6 +414,9 @@ function SymbolInstance(anchor, line, shapedText, shapedIcon, layout, inside,
                         textBoxScale, textPadding, textAlongLine,
                         iconBoxScale, iconPadding, iconAlongLine) {
 
+    this.x = anchor.x;
+    this.y = anchor.y;
+
     this.hasText = !!shapedText;
     this.hasIcon = !!shapedIcon;
 
@@ -409,4 +429,5 @@ function SymbolInstance(anchor, line, shapedText, shapedIcon, layout, inside,
         this.iconQuads = inside ? getIconQuads(anchor, shapedIcon, iconBoxScale, line, layout, iconAlongLine) : [];
         this.iconCollisionFeature = new CollisionFeature(line, anchor, shapedIcon, iconBoxScale, iconPadding, iconAlongLine);
     }
+
 }
